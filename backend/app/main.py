@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.db.database import Base, engine
-from app.api.v1 import health, stt, tts
+from app.api.v1 import health, stt, tts, intent
 from app.models import request_log  # noqa: F401
 
 Base.metadata.create_all(bind=engine)
@@ -30,6 +30,7 @@ app.add_middleware(
 app.include_router(health.router, prefix="/api/v1", tags=["health"])
 app.include_router(stt.router, prefix="/api/v1", tags=["speech"])
 app.include_router(tts.router, prefix="/api/v1", tags=["speech"])
+app.include_router(intent.router, prefix="/api/v1", tags=["intent"])
 
 
 @app.get("/")

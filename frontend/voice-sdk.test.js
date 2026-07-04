@@ -234,3 +234,94 @@ describe('startListening() / stopListening()', () => {
     expect(sdk.getActiveStream()).toBe(fakeStream);
   });
 });
+
+describe('registerCommand() / matchCommand()', () => {
+  let sdk;
+
+  beforeEach(() => {
+    sdk = new VoiceSDK({ apiKey: 'key123' });
+  });
+
+  test('registerCommand throws on an empty pattern', () => {
+    expect(() => sdk.registerCommand('', () => {})).toThrow('non-empty pattern');
+  });
+
+  test('registerCommand throws if handler is not a function', () => {
+    expect(() => sdk.registerCommand('next', 'not-a-function')).toThrow('handler function');
+  });
+
+  test('matchCommand throws if given a non-string', () => {
+    expect(() => sdk.matchCommand(123)).toThrow('requires a string');
+  });
+
+  test('matches an exact phrase and calls the handler', () => {
+    const handler = jest.fn();
+    sdk.registerCommand('next', handler);
+
+    const result = sdk.matchCommand('next');
+
+    expect(handler).toHaveBeenCalledWith({});
+    expect(result).toEqual({ pattern: 'next', params: {} });
+  });
+
+  test('matching is case-insensitive and ignores extra whitespace', () => {
+    const handler = jest.fn();
+    sdk.registerCommand('go back', handler);
+
+    sdk.matchCommand('  GO   BACK  ');
+
+    expect(handler).toHaveBeenCalledWith({});
+  });
+
+  test('captures a {placeholder} value and passes it to the handler', () => {
+    const handler = jest.fn();
+    sdk.registerCommand('search for {query}', handler);
+
+    const result = sdk.matchCommand('search for pizza');
+
+    expect(handler).toHaveBeenCalledWith({ query: 'pizza' });
+    expect(result).toEqual({ pattern: 'search for {query}', params: { query: 'pizza' } });
+  });
+
+  test('returns null and calls no handler when nothing matches', () => {
+    const handler = jest.fn();
+    sdk.registerCommand('next', handler);
+
+    const result = sdk.matchCommand('something unrelated');
+
+    expect(handler).not.toHaveBeenCalled();
+    expect(result).toBeNull();
+  });
+
+  test('checks commands in registration order and stops at the first match', () => {
+    const first = jest.fn();
+    const second = jest.fn();
+    sdk.registerCommand('{anything}', first);
+    sdk.registerCommand('next', second);
+
+    sdk.matchCommand('next');
+
+    expect(first).toHaveBeenCalled();
+    expect(second).not.toHaveBeenCalled();
+  });
+
+  test('the unregister function returned by registerCommand removes only that command', () => {
+    const handler = jest.fn();
+    const unregister = sdk.registerCommand('next', handler);
+
+    unregister();
+    sdk.matchCommand('next');
+
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  test('unregisterCommand removes a command by pattern string', () => {
+    const handler = jest.fn();
+    sdk.registerCommand('next', handler);
+
+    sdk.unregisterCommand('next');
+    sdk.matchCommand('next');
+
+    expect(handler).not.toHaveBeenCalled();
+  });
+});

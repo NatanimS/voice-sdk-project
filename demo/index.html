@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Voice SDK Demo</title>
+</head>
+<body>
+  <h1>Voice SDK Demo</h1>
+  <button id="mic-button">🎤 Start Listening</button>
+  <p>State: <span id="state-display">idle</span></p>
+  <p>You said: <span id="result-display"></span></p>
+
+  <script src="../sdk/dist/index.global.js"></script>
+  <script>
+    const sdk = new VoiceSDKBundle.VoiceSDK({ apiKey: "dev_local_key_123" });
+
+    sdk.onStateChange((state) => {
+      document.getElementById("state-display").textContent = state;
+    });
+
+    sdk.onResult((result) => {
+      document.getElementById("result-display").textContent = result.text;
+    });
+
+    sdk.onError((error) => {
+      alert("Error: " + error.message);
+    });
+
+    document.getElementById("mic-button").onclick = () => {
+      sdk.startListening();
+    };
+  </script>
+</body>
+</html>

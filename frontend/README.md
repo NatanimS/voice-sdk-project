@@ -117,6 +117,46 @@ Returns the raw `MediaStream` currently being recorded, or `null` if not listeni
 const stream = sdk.getActiveStream();
 ```
 
+### `sdk.registerCommand(pattern, handler)`
+
+Registers a voice command. Patterns are matched whole-phrase, case-insensitively, ignoring extra whitespace between words.
+
+```js
+sdk.registerCommand('next', () => showNextSlide());
+sdk.registerCommand('search for {query}', ({ query }) => runSearch(query));
+```
+
+- `pattern` (string, required) — a phrase to match. Use `{name}` to capture part of the phrase into a named parameter.
+- `handler` (function, required) — called with an object of captured params (empty `{}` if the pattern has no placeholders).
+- Returns an **unregister function** — call it later to remove just this one command:
+  ```js
+  const unregister = sdk.registerCommand('next', handler);
+  // ...later...
+  unregister();
+  ```
+
+### `sdk.unregisterCommand(pattern)`
+
+Removes every registered command matching this exact pattern string. Prefer the unregister function returned by `registerCommand()` when you only want to remove one specific registration (e.g. if you registered the same pattern twice for some reason).
+
+```js
+sdk.unregisterCommand('next');
+```
+
+### `sdk.matchCommand(text)`
+
+Checks text against every registered command, in the order they were registered. On the first match, calls that command's handler and returns match details. Typically called with a transcript from `transcribe()` or `stopListening()`.
+
+```js
+const result = await sdk.stopListening();
+const match = sdk.matchCommand(result.text);
+// match is { pattern: 'search for {query}', params: { query: 'pizza' } }
+// or null if nothing matched
+```
+
+- Returns `{ pattern, params }` on a match, or `null` if nothing matched.
+- Only the **first** matching command fires — register more specific patterns before more general ones if a phrase could match multiple commands.
+
 ---
 
 ## Error handling

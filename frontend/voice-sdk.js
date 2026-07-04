@@ -18,6 +18,11 @@
  *   await sdk.startListening('en');
  *   // ... user talks ...
  *   const result = await sdk.stopListening();
+ *
+ *   // Voice commands
+ *   sdk.registerCommand('next', () => showNextSlide());
+ *   sdk.registerCommand('search for {query}', ({ query }) => runSearch(query));
+ *   sdk.matchCommand(result.text); // checks text against registered commands, fires the match
  */
 
 class VoiceSDKError extends Error {
@@ -46,6 +51,9 @@ class VoiceSDK {
     // Internal state used while recording from the microphone
     this._mediaRecorder = null;
     this._recordedChunks = [];
+
+    // Registered voice commands, in registration order
+    this._commands = [];
   }
 
   /**
@@ -181,6 +189,99 @@ class VoiceSDK {
       return this._mediaRecorder.stream;
     }
     return null;
+  }
+
+  /**
+   * Registers a voice command. When matchCommand() is later called with
+   * text that matches this pattern, the handler runs automatically.
+   *
+   * Patterns are matched whole-phrase, case-insensitively, ignoring extra
+   * whitespace. Use {name} inside a pattern to capture part of the
+   * phrase — e.g. 'search for {query}' matches "search for pizza" and
+   * calls handler({ query: 'pizza' }).
+   *
+   * @param {string} pattern - e.g. 'next', 'search for {query}'
+   * @param {(params: Object) => void} handler - called with captured params on match
+   * @returns {() => void} an unregister function — call it to remove this command later
+   */
+  registerCommand(pattern, handler) {
+    if (typeof pattern !== 'string' || !pattern.trim()) {
+      throw new VoiceSDKError('registerCommand() requires a non-empty pattern string.');
+    }
+    if (typeof handler !== 'function') {
+      throw new VoiceSDKError('registerCommand() requires a handler function.');
+    }
+
+    const compiled = this._compilePattern(pattern);
+    const entry = { pattern, handler, ...compiled };
+    this._commands.push(entry);
+
+    return () => {
+      this._commands = this._commands.filter((c) => c !== entry);
+    };
+  }
+
+  /**
+   * Removes every registered command matching this exact pattern string.
+   * Prefer using the unregister function returned by registerCommand()
+   * when you only want to remove one specific registration.
+   *
+   * @param {string} pattern
+   */
+  unregisterCommand(pattern) {
+    this._commands = this._commands.filter((c) => c.pattern !== pattern);
+  }
+
+  /**
+   * Checks text against every registered command. On the first match,
+   * calls that command's handler with any captured params and returns
+   * details about the match. Returns null if nothing matched.
+   *
+   * @param {string} text - typically a transcript from transcribe()/stopListening()
+   * @returns {{pattern: string, params: Object}|null}
+   */
+  matchCommand(text) {
+    if (typeof text !== 'string') {
+      throw new VoiceSDKError('matchCommand() requires a string.');
+    }
+    const normalized = text.trim();
+
+    for (const command of this._commands) {
+      const match = normalized.match(command.regex);
+      if (match) {
+        const params = {};
+        command.paramNames.forEach((name, i) => {
+          params[name] = match[i + 1];
+        });
+        command.handler(params);
+        return { pattern: command.pattern, params };
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Turns a pattern like 'search for {query}' into a case-insensitive
+   * whole-phrase regex, plus the ordered list of param names it captures.
+   * @private
+   */
+  _compilePattern(pattern) {
+    const paramNames = [];
+    const regexBody = pattern
+      .trim()
+      .split(/\s+/)
+      .map((token) => {
+        const placeholder = token.match(/^\{(\w+)\}$/);
+        if (placeholder) {
+          paramNames.push(placeholder[1]);
+          return '(.+)';
+        }
+        // Escape regex special characters in literal words
+        return token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      })
+      .join('\\s+');
+
+    return { regex: new RegExp(`^${regexBody}$`, 'i'), paramNames };
   }
 
   /**
