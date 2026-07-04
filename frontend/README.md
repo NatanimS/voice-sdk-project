@@ -183,6 +183,26 @@ Common causes:
 
 ---
 
+## TypeScript
+
+Type definitions are included in `voice-sdk.d.ts`. If you're using TypeScript or an editor with IntelliSense (like VS Code), you get autocomplete and type-checking automatically as long as both files sit in the same folder — no extra install step.
+
+```ts
+import VoiceSDK, { TranscriptResult, VoiceSDKError } from './voice-sdk';
+
+const sdk = new VoiceSDK({ apiKey: 'your_api_key' });
+
+try {
+  const result: TranscriptResult = await sdk.stopListening();
+} catch (err) {
+  if (err instanceof VoiceSDKError) {
+    console.error(err.status, err.message);
+  }
+}
+```
+
+Note: `voice-sdk.d.ts` describes the SDK for type-checking purposes only — it doesn't change how `voice-sdk.js` runs. If you edit a method's parameters or return type in `voice-sdk.js`, update `voice-sdk.d.ts` to match by hand.
+
 ## Browser support notes
 
 - Requires `MediaRecorder` and `getUserMedia` — supported in current Chrome, Edge, and Firefox. Safari support varies by version.
