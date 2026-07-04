@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Voice SDK — speak, in your language</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #12151A;
+    --panel: #1C2027;
+    --panel-line: #2A2F38;
+    --amber: #E8A33D;
+    --amber-dim: #7A5A2E;
+    --signal: #6FCF97;
+    --danger: #D9694F;
+    --text: #F2EFE9;
+    --text-muted: #8B9099;
+    --radius: 10px;
+    --display: 'Fraunces', serif;
+    --body: 'Inter', sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--body);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: inherit; }
+
+  .wrap {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 28px;
+  }
+
+  /* ---------- Nav ---------- */
+  nav.wrap {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 28px;
+    padding-bottom: 28px;
+  }
+  .wordmark {
+    font-family: var(--mono);
+    font-size: 14px;
+    letter-spacing: 0.06em;
+    color: var(--text);
+    text-decoration: none;
+  }
+  .wordmark span { color: var(--amber); }
+  .nav-links {
+    display: flex;
+    gap: 28px;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+  .nav-links a { text-decoration: none; }
+  .nav-links a:hover { color: var(--text); }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    padding: 40px 0 90px;
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 56px;
+    align-items: center;
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    color: var(--amber);
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 22px;
+  }
+  .eyebrow::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--signal);
+    box-shadow: 0 0 0 3px rgba(111,207,151,0.15);
+  }
+  h1 {
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: clamp(38px, 5vw, 58px);
+    line-height: 1.05;
+    letter-spacing: -0.01em;
+    margin: 0 0 22px;
+  }
+  h1 em {
+    font-style: italic;
+    color: var(--amber);
+  }
+  .hero p.lede {
+    font-size: 17px;
+    color: var(--text-muted);
+    max-width: 460px;
+    margin: 0 0 30px;
+  }
+  .hero-actions { display: flex; gap: 14px; }
+  .btn {
+    font-family: var(--body);
+    font-weight: 600;
+    font-size: 14px;
+    padding: 12px 22px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+  }
+  .btn:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+  .btn-primary { background: var(--amber); color: #14110A; }
+  .btn-primary:hover { transform: translateY(-1px); }
+  .btn-ghost { background: transparent; color: var(--text); border-color: var(--panel-line); }
+  .btn-ghost:hover { border-color: var(--text-muted); }
+
+  /* ---------- Live widget (signature element) ---------- */
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--panel-line);
+    border-radius: var(--radius);
+  }
+  .meter {
+    padding: 22px 22px 18px;
+  }
+  .meter-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+  .meter-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+  }
+  .lang-toggle {
+    display: flex;
+    gap: 4px;
+    background: #14171C;
+    border-radius: 6px;
+    padding: 3px;
+  }
+  .lang-toggle button {
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 5px 10px;
+    border-radius: 4px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+  }
+  .lang-toggle button.active { background: var(--panel-line); color: var(--text); }
+  .lang-toggle button:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+
+  canvas#scope {
+    width: 100%;
+    height: 96px;
+    display: block;
+    border-radius: 6px;
+    background: #0F1216;
+  }
+
+  .readout {
+    margin-top: 14px;
+    min-height: 46px;
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--text);
+    background: #0F1216;
+    border-radius: 6px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .readout .placeholder { color: var(--text-muted); }
+  .readout .confidence { color: var(--signal); font-size: 12px; margin-left: auto; }
+
+  .meter-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 16px;
+  }
+  .mic-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 10px 18px;
+    border-radius: 8px;
+    border: 1px solid var(--amber-dim);
+    background: rgba(232,163,61,0.08);
+    color: var(--amber);
+    cursor: pointer;
+  }
+  .mic-btn:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+  .mic-btn.recording { border-color: var(--danger); color: var(--danger); background: rgba(217,105,79,0.1); }
+  .mic-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--amber); }
+  .mic-btn.recording .mic-dot { background: var(--danger); animation: pulse 1.1s infinite; }
+  .replay-btn {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-muted);
+    background: none;
+    border: 1px solid var(--panel-line);
+    border-radius: 6px;
+    padding: 8px 12px;
+    cursor: pointer;
+    visibility: hidden;
+  }
+  .replay-btn.show { visibility: visible; }
+  .replay-btn:hover { color: var(--text); border-color: var(--text-muted); }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.25; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .mic-btn.recording .mic-dot { animation: none; }
+    html { scroll-behavior: auto; }
+  }
+
+  /* ---------- Integration section ---------- */
+  .section { padding: 70px 0; border-top: 1px solid var(--panel-line); }
+  .section-head { max-width: 520px; margin-bottom: 34px; }
+  .section-head .eyebrow { margin-bottom: 14px; }
+  .section-head h2 {
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: 30px;
+    margin: 0 0 10px;
+  }
+  .section-head p { color: var(--text-muted); margin: 0; font-size: 15px; }
+
+  .code-block {
+    background: #0F1216;
+    border: 1px solid var(--panel-line);
+    border-radius: var(--radius);
+    padding: 22px 24px;
+    font-family: var(--mono);
+    font-size: 13.5px;
+    line-height: 1.7;
+    overflow-x: auto;
+  }
+  .code-block .c1 { color: var(--text-muted); }
+  .code-block .c2 { color: var(--amber); }
+  .code-block .c3 { color: var(--signal); }
+  .code-block .c4 { color: #7FA8E8; }
+
+  /* ---------- Language comparison ---------- */
+  .compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+  }
+  .compare-card {
+    padding: 22px;
+  }
+  .compare-card .tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    display: block;
+  }
+  .compare-card .phrase {
+    font-family: var(--display);
+    font-size: 22px;
+    margin: 0 0 18px;
+    min-height: 60px;
+  }
+  .compare-card .play {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--amber);
+    background: rgba(232,163,61,0.08);
+    border: 1px solid var(--amber-dim);
+    border-radius: 6px;
+    padding: 7px 14px;
+    cursor: pointer;
+  }
+  .compare-card .play:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+  .compare-card .play:disabled { opacity: 0.5; cursor: default; }
+
+  footer {
+    border-top: 1px solid var(--panel-line);
+    padding: 28px 0 40px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-muted);
+    display: flex;
+    justify-content: space-between;
+  }
+
+  @media (max-width: 780px) {
+    .hero { grid-template-columns: 1fr; padding-bottom: 60px; }
+    .compare { grid-template-columns: 1fr; }
+    nav.wrap { flex-direction: column; align-items: flex-start; gap: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="wrap">
+  <a class="wordmark" href="#">voice<span>sdk</span>.js</a>
+  <div class="nav-links">
+    <a href="#try">Try it</a>
+    <a href="#integrate">Integrate</a>
+    <a href="#languages">Languages</a>
+  </div>
+</nav>
+
+<header class="wrap hero" id="try">
+  <div>
+    <div class="eyebrow">Live backend · mock mode</div>
+    <h1>Speak, in your<br><em>own language</em>,<br>on any site.</h1>
+    <p class="lede">
+      A drop-in SDK for real-time speech-to-text, text-to-speech, and voice
+      commands — built for English and Amharic, with room to grow.
+    </p>
+    <div class="hero-actions">
+      <button class="btn btn-primary" id="scroll-integrate">See the integration</button>
+      <button class="btn btn-ghost" id="scroll-languages">Compare languages</button>
+    </div>
+  </div>
+
+  <div class="panel meter">
+    <div class="meter-head">
+      <span class="meter-label">Input monitor</span>
+      <div class="lang-toggle" role="group" aria-label="Recording language">
+        <button type="button" class="active" data-lang="en">EN</button>
+        <button type="button" data-lang="am">አማ</button>
+      </div>
+    </div>
+
+    <canvas id="scope" width="600" height="96"></canvas>
+
+    <div class="readout" id="readout">
+      <span class="placeholder">Transcript will appear here...</span>
+    </div>
+
+    <div class="meter-controls">
+      <button class="mic-btn" id="mic-btn">
+        <span class="mic-dot"></span>
+        <span id="mic-label">Start speaking</span>
+      </button>
+      <button class="replay-btn" id="replay-btn">▸ replay as speech</button>
+    </div>
+  </div>
+</header>
+
+<section class="section" id="integrate">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">Integrate</div>
+      <h2>Three lines, not three services.</h2>
+      <p>No audio pipeline to stand up. The SDK handles the microphone, the request, and playback.</p>
+    </div>
+    <div class="code-block"><span class="c1">const</span> sdk = <span class="c1">new</span> <span class="c4">VoiceSDK</span>({ apiKey, baseUrl });
+
+<span class="c1">await</span> sdk.<span class="c2">startListening</span>(<span class="c3">'am'</span>);       <span class="c1">// mic turns on</span>
+<span class="c1">const</span> { text } = <span class="c1">await</span> sdk.<span class="c2">stopListening</span>();  <span class="c1">// mic turns off, transcript returns</span>
+
+<span class="c1">await</span> sdk.<span class="c2">speak</span>(text, <span class="c3">'am'</span>);              <span class="c1">// spoken back to the user</span></div>
+  </div>
+</section>
+
+<section class="section" id="languages">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">Languages</div>
+      <h2>Same SDK, either language.</h2>
+      <p>No language-specific integration code — pass a language code, get the right voice back.</p>
+    </div>
+    <div class="compare">
+      <div class="panel compare-card">
+        <span class="tag">English</span>
+        <p class="phrase">"Good morning. What can I help you find?"</p>
+        <button class="play" data-text="Good morning. What can I help you find?" data-lang="en">▸ play</button>
+      </div>
+      <div class="panel compare-card">
+        <span class="tag">Amharic</span>
+        <p class="phrase">"ደህና አደርክ። ምን ልርዳህ?"</p>
+        <button class="play" data-text="ደህና አደርክ። ምን ልርዳህ?" data-lang="am">▸ play</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="wrap">
+  <span>voicesdk.js — mock backend, dev build</span>
+  <span>en / am</span>
+</footer>
+
+<script src="voice-sdk.js"></script>
+<script>
+  const sdk = new VoiceSDK({
+    apiKey: 'dev_local_key_123',
+    baseUrl: 'http://127.0.0.1:8000',
+  });
+
+  // ---------- Language toggle ----------
+  let currentLang = 'en';
+  const langButtons = document.querySelectorAll('.lang-toggle button');
+  langButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      langButtons.forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentLang = btn.dataset.lang;
+    });
+  });
+
+  // ---------- Nav scroll buttons ----------
+  document.getElementById('scroll-integrate').addEventListener('click', () =>
+    document.getElementById('integrate').scrollIntoView({ behavior: 'smooth' }));
+  document.getElementById('scroll-languages').addEventListener('click', () =>
+    document.getElementById('languages').scrollIntoView({ behavior: 'smooth' }));
+
+  // ---------- Waveform (signature element) ----------
+  const canvas = document.getElementById('scope');
+  const ctx = canvas.getContext('2d');
+  let audioCtx, analyser, dataArray, rafId;
+  let breatheFrame = 0;
+
+  function resizeCanvas() {
+    const ratio = window.devicePixelRatio || 1;
+    canvas.width = canvas.clientWidth * ratio;
+    canvas.height = canvas.clientHeight * ratio;
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  }
+  window.addEventListener('resize', resizeCanvas);
+  resizeCanvas();
+
+  function drawBars(values) {
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    ctx.clearRect(0, 0, w, h);
+    const barCount = 40;
+    const gap = 3;
+    const barWidth = (w - gap * (barCount - 1)) / barCount;
+
+    for (let i = 0; i < barCount; i++) {
+      const v = values[i] ?? 0;
+      const barHeight = Math.max(2, v * h);
+      const x = i * (barWidth + gap);
+      const y = (h - barHeight) / 2;
+      ctx.fillStyle = i % 5 === 0 ? '#F2EFE9' : 'rgba(232,163,61,0.85)';
+      ctx.fillRect(x, y, barWidth, barHeight);
+    }
+  }
+
+  function breathingIdle() {
+    breatheFrame += 0.045;
+    const values = [];
+    for (let i = 0; i < 40; i++) {
+      const base = 0.06 + 0.03 * Math.sin(breatheFrame + i * 0.3);
+      values.push(Math.max(0.02, base));
+    }
+    drawBars(values);
+    rafId = requestAnimationFrame(breathingIdle);
+  }
+
+  function liveWaveform(stream) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const source = audioCtx.createMediaStreamSource(stream);
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 128;
+    source.connect(analyser);
+    dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+    function render() {
+      analyser.getByteFrequencyData(dataArray);
+      const step = Math.floor(dataArray.length / 40);
+      const values = [];
+      for (let i = 0; i < 40; i++) {
+        values.push((dataArray[i * step] || 0) / 255);
+      }
+      drawBars(values);
+      rafId = requestAnimationFrame(render);
+    }
+    render();
+  }
+
+  function stopWaveform() {
+    if (rafId) cancelAnimationFrame(rafId);
+    if (audioCtx) { audioCtx.close(); audioCtx = null; }
+  }
+
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!prefersReducedMotion) {
+    breathingIdle();
+  } else {
+    drawBars(new Array(40).fill(0.08));
+  }
+
+  // ---------- Mic recording flow ----------
+  const micBtn = document.getElementById('mic-btn');
+  const micLabel = document.getElementById('mic-label');
+  const readout = document.getElementById('readout');
+  const replayBtn = document.getElementById('replay-btn');
+  let isRecording = false;
+  let lastTranscript = '';
+
+  micBtn.addEventListener('click', async () => {
+    try {
+      if (!isRecording) {
+        readout.innerHTML = '<span class="placeholder">Listening...</span>';
+        replayBtn.classList.remove('show');
+        await sdk.startListening(currentLang);
+        isRecording = true;
+        micBtn.classList.add('recording');
+        micLabel.textContent = 'Stop';
+        if (rafId) cancelAnimationFrame(rafId);
+        liveWaveform(sdk.getActiveStream());
+      } else {
+        micBtn.disabled = true;
+        micLabel.textContent = 'Transcribing...';
+        stopWaveform();
+        const result = await sdk.stopListening();
+        lastTranscript = result.text;
+        readout.innerHTML = `<span>${result.text}</span><span class="confidence">${Math.round(result.confidence * 100)}%</span>`;
+        replayBtn.classList.add('show');
+
+        isRecording = false;
+        micBtn.disabled = false;
+        micBtn.classList.remove('recording');
+        micLabel.textContent = 'Start speaking';
+        if (!prefersReducedMotion) breathingIdle();
+      }
+    } catch (err) {
+      readout.innerHTML = `<span class="placeholder">${err.message}</span>`;
+      isRecording = false;
+      micBtn.disabled = false;
+      micBtn.classList.remove('recording');
+      micLabel.textContent = 'Start speaking';
+      stopWaveform();
+      if (!prefersReducedMotion) breathingIdle();
+    }
+  });
+
+  replayBtn.addEventListener('click', async () => {
+    if (!lastTranscript) return;
+    try {
+      await sdk.speak(lastTranscript, currentLang);
+    } catch (err) {
+      readout.innerHTML = `<span class="placeholder">${err.message}</span>`;
+    }
+  });
+
+  // ---------- Language comparison play buttons ----------
+  document.querySelectorAll('.compare-card .play').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      const original = btn.textContent;
+      btn.textContent = '▸ playing...';
+      try {
+        const audio = await sdk.speak(btn.dataset.text, btn.dataset.lang);
+        audio.addEventListener('ended', () => {
+          btn.disabled = false;
+          btn.textContent = original;
+        });
+      } catch (err) {
+        btn.textContent = '▸ error';
+        setTimeout(() => { btn.disabled = false; btn.textContent = original; }, 1500);
+      }
+    });
+  });
+</script>
+</body>
+</html>
