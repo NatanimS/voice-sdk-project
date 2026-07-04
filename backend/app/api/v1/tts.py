@@ -11,10 +11,10 @@ from app.core.auth import verify_api_key
 from app.db.database import get_db
 from app.models.request_log import RequestLog
 from app.schemas.speech import TTSRequest
-from app.services.mock_speech import MockSpeechProvider
+from app.services.mms_speech import MmsSpeechProvider
 
 router = APIRouter()
-provider = MockSpeechProvider()
+provider = MmsSpeechProvider()
 
 
 @router.post("/tts", dependencies=[Depends(verify_api_key)])
