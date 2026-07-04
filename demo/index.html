@@ -2,33 +2,160 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Voice SDK Demo</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <h1>Voice SDK Demo</h1>
-  <button id="mic-button">🎤 Start Listening</button>
-  <p>State: <span id="state-display">idle</span></p>
-  <p>You said: <span id="result-display"></span></p>
+  <div class="wrap">
 
+    <p class="eyebrow">Voice SDK · English &amp; Amharic</p>
+    <h1>Speak, and it understands.</h1>
+    <p class="subtitle">
+      A live demo of real-time speech recognition, text-to-speech, and intent
+      understanding — built to work in both English and Amharic from a single SDK.
+    </p>
+
+    <div class="lang-toggle" id="lang-toggle">
+      <button class="lang-btn active" data-lang="en">English</button>
+      <button class="lang-btn" data-lang="am">Amharic</button>
+    </div>
+
+    <div class="orb-section">
+      <div class="orb-container" id="orb-container">
+        <div class="orb-ring"></div>
+        <div class="orb-ring"></div>
+        <div class="orb-ring"></div>
+        <button class="orb" id="orb-button">🎙️</button>
+      </div>
+      <span class="state-pill" id="state-pill">idle</span>
+    </div>
+
+    <div class="panel">
+      <p class="panel-label">Transcript</p>
+      <p class="panel-value" id="result-display">Say something to see it here.</p>
+      <p class="panel-meta" id="intent-display"></p>
+    </div>
+
+    <div class="panel">
+      <p class="panel-label">Last command matched</p>
+      <p class="panel-value" id="command-display">(none yet)</p>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-secondary" id="speak-button">🔊 Speak it back</button>
+      <button class="btn-secondary" id="assistant-start-button">🤖 Start assistant mode</button>
+      <button class="btn-secondary" id="assistant-stop-button">⏹ Stop assistant mode</button>
+    </div>
+
+    <h2 class="section-title">What's happening under the hood</h2>
+    <div class="grid">
+      <div class="feature-card">
+        <h3>Speech recognition</h3>
+        <p>English runs entirely in your browser. Amharic is recorded here and transcribed by the backend.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Intent understanding</h3>
+        <p>Every transcript is checked against a rule-based intent engine — try saying "search for shoes."</p>
+      </div>
+      <div class="feature-card">
+        <h3>Custom commands</h3>
+        <p>Say "hello" or "stop" to trigger a registered voice command handler.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Assistant mode</h3>
+        <p>A one-line convenience wrapper for listen-and-respond interactions.</p>
+      </div>
+    </div>
+
+  </div>
   <script src="../sdk/dist/index.global.js"></script>
   <script>
-    const sdk = new VoiceSDKBundle.VoiceSDK({ apiKey: "dev_local_key_123" });
-
-    sdk.onStateChange((state) => {
-      document.getElementById("state-display").textContent = state;
+    const sdk = new VoiceSDKBundle.VoiceSDK({
+      apiKey: "dev_local_key_123",
+      backendUrl: "http://127.0.0.1:8000",
     });
 
+    let currentLanguage = "en";
+
+    // --- Language toggle ---
+    document.querySelectorAll(".lang-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".lang-btn").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        currentLanguage = btn.dataset.lang;
+      });
+    });
+
+    // --- State machine -> visual updates ---
+    const orbContainer = document.getElementById("orb-container");
+    const statePill = document.getElementById("state-pill");
+
+    sdk.onStateChange((state) => {
+      statePill.textContent = state;
+      statePill.className = "state-pill state-" + state;
+      orbContainer.classList.toggle("is-listening", state === "listening");
+    });
+
+    // --- Transcript + intent results ---
     sdk.onResult((result) => {
       document.getElementById("result-display").textContent = result.text;
+
+      const intentText = result.intent
+        ? `intent: ${result.intent}  ·  entities: ${JSON.stringify(result.entities || {})}`
+        : "";
+      document.getElementById("intent-display").textContent = intentText;
     });
 
     sdk.onError((error) => {
+      statePill.textContent = "error";
+      statePill.className = "state-pill state-error";
       alert("Error: " + error.message);
     });
 
-    document.getElementById("mic-button").onclick = () => {
-      sdk.startListening();
-    };
+    // --- Commands ---
+    sdk.registerCommand("hello", (matchedText) => {
+      document.getElementById("command-display").textContent =
+        `"hello" matched (heard: "${matchedText}")`;
+    });
+
+    sdk.registerCommand("stop", (matchedText) => {
+      document.getElementById("command-display").textContent =
+        `"stop" matched (heard: "${matchedText}")`;
+    });
+
+    // --- Orb button: start/stop listening ---
+    let isListening = false;
+    document.getElementById("orb-button").addEventListener("click", () => {
+      if (!isListening) {
+        isListening = true;
+        sdk.startListening({ language: currentLanguage }).finally(() => {
+          isListening = false;
+        });
+      } else {
+        sdk.stopListening();
+        isListening = false;
+      }
+    });
+
+    // --- Speak it back ---
+    document.getElementById("speak-button").addEventListener("click", () => {
+      const text = document.getElementById("result-display").textContent;
+      if (!text || text === "Say something to see it here.") {
+        alert("Nothing to speak yet — transcribe something first.");
+        return;
+      }
+      sdk.speak(text, { language: currentLanguage });
+    });
+
+    // --- Assistant mode ---
+    document.getElementById("assistant-start-button").addEventListener("click", () => {
+      sdk.assistant.start(currentLanguage);
+    });
+
+    document.getElementById("assistant-stop-button").addEventListener("click", () => {
+      sdk.assistant.stop();
+    });
   </script>
 </body>
 </html>
