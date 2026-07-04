@@ -309,6 +309,72 @@
   .compare-card .play:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
   .compare-card .play:disabled { opacity: 0.5; cursor: default; }
 
+  /* ---------- Command demo ---------- */
+  .command-demo { padding: 26px; }
+  .slide-display {
+    background: #0F1216;
+    border-radius: 8px;
+    padding: 32px 24px;
+    text-align: center;
+    margin-bottom: 18px;
+  }
+  .slide-index {
+    display: block;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--amber);
+    letter-spacing: 0.08em;
+    margin-bottom: 12px;
+  }
+  .slide-text {
+    font-family: var(--display);
+    font-size: 22px;
+    margin: 0;
+    transition: opacity 0.15s ease;
+  }
+  .command-controls {
+    display: flex;
+    gap: 10px;
+  }
+  .command-controls input {
+    flex: 1;
+    font-family: var(--mono);
+    font-size: 13px;
+    background: #0F1216;
+    border: 1px solid var(--panel-line);
+    border-radius: 8px;
+    padding: 11px 14px;
+    color: var(--text);
+  }
+  .command-controls input::placeholder { color: var(--text-muted); }
+  .command-controls input:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+  .command-hints {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-muted);
+    margin: 12px 0 0;
+  }
+  .command-hints code {
+    color: var(--amber);
+    background: rgba(232,163,61,0.08);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+  .command-log {
+    margin-top: 16px;
+    font-family: var(--mono);
+    font-size: 12px;
+    max-height: 120px;
+    overflow-y: auto;
+  }
+  .command-log .entry {
+    padding: 6px 0;
+    border-top: 1px solid var(--panel-line);
+    color: var(--text-muted);
+  }
+  .command-log .entry.matched { color: var(--signal); }
+  .command-log .entry.missed { color: var(--danger); }
+
   footer {
     border-top: 1px solid var(--panel-line);
     padding: 28px 0 40px;
@@ -334,6 +400,7 @@
     <a href="#try">Try it</a>
     <a href="#integrate">Integrate</a>
     <a href="#languages">Languages</a>
+    <a href="#commands">Commands</a>
   </div>
 </nav>
 
@@ -410,6 +477,28 @@
         <p class="phrase">"ደህና አደርክ። ምን ልርዳህ?"</p>
         <button class="play" data-text="ደህና አደርክ። ምን ልርዳህ?" data-lang="am">▸ play</button>
       </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="commands">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">Voice commands</div>
+      <h2>Say it, don't click it.</h2>
+      <p>Register a phrase once — matched commands fire instantly, with named captures pulled straight out of what was said.</p>
+    </div>
+    <div class="panel command-demo">
+      <div class="slide-display">
+        <span class="slide-index" id="slide-index">Slide 1 of 3</span>
+        <p class="slide-text" id="slide-text">Welcome — try a command below.</p>
+      </div>
+      <div class="command-controls">
+        <input type="text" id="command-input" placeholder="Type a command, e.g. next, back, go to slide 2" />
+        <button class="btn btn-primary" id="run-command-btn">Run</button>
+      </div>
+      <p class="command-hints">Registered: <code>next</code> · <code>back</code> · <code>go to slide {n}</code> — or just talk using the mic above; every transcript gets checked too.</p>
+      <div class="command-log" id="command-log"></div>
     </div>
   </div>
 </section>
@@ -520,6 +609,67 @@
     drawBars(new Array(40).fill(0.08));
   }
 
+  // ---------- Command demo ----------
+  const slides = [
+    'Welcome — try a command below.',
+    'This is slide two. Say or type "next" to keep going.',
+    'Last slide. Say "back" to return, or "go to slide 1" to jump.',
+  ];
+  let currentSlide = 0;
+
+  const slideIndexEl = document.getElementById('slide-index');
+  const slideTextEl = document.getElementById('slide-text');
+  const commandLog = document.getElementById('command-log');
+  const commandInput = document.getElementById('command-input');
+  const runCommandBtn = document.getElementById('run-command-btn');
+
+  function renderSlide() {
+    slideIndexEl.textContent = `Slide ${currentSlide + 1} of ${slides.length}`;
+    slideTextEl.textContent = slides[currentSlide];
+  }
+
+  function logCommand(text, matched) {
+    const entry = document.createElement('div');
+    entry.className = `entry ${matched ? 'matched' : 'missed'}`;
+    entry.textContent = matched ? `✓ matched: "${text}"` : `✗ no match: "${text}"`;
+    commandLog.prepend(entry);
+    // Keep the log from growing forever
+    while (commandLog.children.length > 6) {
+      commandLog.removeChild(commandLog.lastChild);
+    }
+  }
+
+  sdk.registerCommand('next', () => {
+    currentSlide = Math.min(currentSlide + 1, slides.length - 1);
+    renderSlide();
+  });
+  sdk.registerCommand('back', () => {
+    currentSlide = Math.max(currentSlide - 1, 0);
+    renderSlide();
+  });
+  sdk.registerCommand('go to slide {n}', ({ n }) => {
+    const index = parseInt(n, 10) - 1;
+    if (!isNaN(index) && index >= 0 && index < slides.length) {
+      currentSlide = index;
+      renderSlide();
+    }
+  });
+
+  function runTypedCommand() {
+    const text = commandInput.value.trim();
+    if (!text) return;
+    const match = sdk.matchCommand(text);
+    logCommand(text, Boolean(match));
+    commandInput.value = '';
+  }
+
+  runCommandBtn.addEventListener('click', runTypedCommand);
+  commandInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') runTypedCommand();
+  });
+
+  renderSlide();
+
   // ---------- Mic recording flow ----------
   const micBtn = document.getElementById('mic-btn');
   const micLabel = document.getElementById('mic-label');
@@ -547,6 +697,10 @@
         lastTranscript = result.text;
         readout.innerHTML = `<span>${result.text}</span><span class="confidence">${Math.round(result.confidence * 100)}%</span>`;
         replayBtn.classList.add('show');
+
+        // Also check the transcript against registered voice commands
+        const match = sdk.matchCommand(result.text);
+        logCommand(result.text, Boolean(match));
 
         isRecording = false;
         micBtn.disabled = false;
