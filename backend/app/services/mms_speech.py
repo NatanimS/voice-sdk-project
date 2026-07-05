@@ -6,6 +6,7 @@ from transformers import VitsModel, AutoTokenizer
 from app.services.speech_provider import SpeechProvider
 from app.services.mock_speech import MockSpeechProvider
 
+
 class MmsSpeechProvider(SpeechProvider):
     def __init__(self):
         # TTS: real MMS Amharic model
@@ -32,12 +33,6 @@ class MmsSpeechProvider(SpeechProvider):
             output = self._tts_model(**inputs).waveform
 
         audio_array = output.numpy().squeeze()
-audio_int16 = (audio_array * 32767).astype("int16")
+        audio_int16 = (audio_array * 32767).astype("int16")
 
-buffer = io.BytesIO()
-scipy.io.wavfile.write(
-    buffer,
-    rate=self._tts_model.config.sampling_rate,
-    data=audio_int16,
-)
-return buffer.getvalue()
+        buffer
