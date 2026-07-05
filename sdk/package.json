@@ -1,15 +1,30 @@
 {
-  "name": "sdk",
+  "name": "@natanims/voice-sdk",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "A reusable JavaScript SDK for adding voice capabilities (STT, TTS, commands, intent recognition) to any website, with English and Amharic support.",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup"
   },
-  "keywords": [],
+  "keywords": [
+    "voice",
+    "speech-to-text",
+    "text-to-speech",
+    "amharic",
+    "sdk"
+  ],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "type": "commonjs",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/NatanimS/voice-sdk-project.git"
+  },
   "devDependencies": {
     "tsup": "^8.5.1",
     "typescript": "^6.0.3",
