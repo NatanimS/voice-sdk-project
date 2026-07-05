@@ -30,9 +30,15 @@ class MmsSpeechProvider(SpeechProvider):
         inputs = self._tts_tokenizer(romanized, return_tensors="pt")
 
         with torch.no_grad():
-            output = self._tts_model(**inputs).waveform
+            model_output = self._tts_model(**inputs).waveform
 
-        audio_array = output.numpy().squeeze()
+        audio_array = model_output.numpy().squeeze()
         audio_int16 = (audio_array * 32767).astype("int16")
 
-        buffer
+        output_buffer = io.BytesIO()
+        scipy.io.wavfile.write(
+            output_buffer,
+            rate=self._tts_model.config.sampling_rate,
+            data=audio_int16,
+        )
+        return output_buffer.getvalue()
